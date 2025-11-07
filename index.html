@@ -1,0 +1,234 @@
+# serve on port 8000
+python -m http.server 8000<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Abbas Ali | 3D Tomb Raider Portfolio</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+	<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+	<style>
+		* { box-sizing: border-box; }
+		html, body { height: 100%; }
+		body {
+			margin: 0;
+			font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+			color: #e9e9f1;
+			background:
+				radial-gradient(1100px 600px at 20% 20%, rgba(255,255,255,0.06), transparent),
+				linear-gradient(135deg, #1b1b22 0%, #0f0f14 45%, #181522 100%);
+			overflow: auto;
+		}
+		#webgl { position: fixed; inset: 0; z-index: 0; }
+
+		.hud {
+			position: fixed; top: 0; left: 0; right: 0; z-index: 3;
+			display: flex; justify-content: space-between; align-items: center;
+			padding: 14px 20px; backdrop-filter: blur(8px);
+			background: linear-gradient(90deg, rgba(20,20,26,0.75), rgba(20,20,26,0.35));
+			border-bottom: 1px solid rgba(255,255,255,0.07);
+		}
+		.brand { display: flex; gap: 10px; align-items: center; letter-spacing: 1px; font-weight: 700; }
+		.brand .glyph { color: #e9c46a; }
+		.nav { display: flex; gap: 10px; }
+		.nav-btn {
+			appearance: none; border: 1px solid rgba(255,255,255,0.15); color: #f2f2f7;
+			background: rgba(255,255,255,0.06); padding: 8px 14px; border-radius: 10px; cursor: pointer;
+		}
+		.nav-btn:hover { background: rgba(255,255,255,0.12); }
+
+		.hero { position: relative; min-height: 100vh; display: grid; place-content: center; z-index: 2; text-align: center; pointer-events: none; padding: 20px; }
+		.title { font-size: clamp(34px, 6vw, 68px); margin: 0 0 8px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; }
+		.subtitle { margin: 0 0 18px; opacity: 0.9; }
+		.cta { display: flex; gap: 12px; justify-content: center; pointer-events: all; }
+
+		.btn-primary {
+			border: none; color: #0b0b10; background: linear-gradient(135deg, #e9c46a, #f4a261);
+			padding: 12px 18px; border-radius: 12px; cursor: pointer; font-weight: 700;
+			box-shadow: 0 10px 24px rgba(233,196,106,0.35);
+		}
+		.btn-primary:hover { filter: brightness(1.05); transform: translateY(-1px); }
+		.btn-ghost { color: #e9e9f1; border: 1px solid rgba(255,255,255,0.2); padding: 12px 18px; border-radius: 12px; text-decoration: none; }
+		.btn-ghost:hover { background: rgba(255,255,255,0.08); }
+
+		/* Custom cursor */
+		.cursor {
+			position: fixed; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%;
+			border: 2px solid rgba(233,196,106,0.9); pointer-events: none; z-index: 10;
+			transform: translate(-50%, -50%); mix-blend-mode: difference; opacity: 0.9;
+		}
+		.cursor-dot { position: fixed; left: 0; top: 0; width: 6px; height: 6px; border-radius: 50%; background: #e9c46a; pointer-events:none; z-index: 10; transform: translate(-50%, -50%); }
+		[data-hover] { position: relative; }
+		[data-magnetic="true"] { will-change: transform; }
+
+		.panel {
+			position: fixed; right: 20px; top: 76px; z-index: 4; width: min(420px, 92vw);
+			background: rgba(20,20,26,0.85); border: 1px solid rgba(255,255,255,0.08);
+			border-radius: 16px; padding: 18px 16px; display: none; max-height: 78vh; overflow: auto;
+			box-shadow: 0 10px 40px rgba(0,0,0,0.45);
+		}
+		.panel.active { display: block; }
+		.panel h2 { margin: 0 0 10px; color: #e9c46a; }
+
+		/* Scene sections (scrollable pages) */
+		main { position: relative; z-index: 1; }
+		.section {
+			min-height: 100vh; display: grid; align-content: center; gap: 14px; padding: 80px 20px 60px; position: relative;
+		}
+		.section .container { max-width: 1100px; margin: 0 auto; background: rgba(20,20,26,0.6); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 22px; backdrop-filter: blur(6px); }
+		.section h2 { margin: 0 0 6px; font-size: clamp(22px, 3vw, 34px); }
+		.section p { opacity: 0.95; }
+		.section .grid { display: grid; gap: 14px; grid-template-columns: repeat(12, 1fr); }
+		.section .cardish { grid-column: span 4; padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); }
+		.section .cardish h3 { margin: 0 0 6px; }
+
+		/* Mini-game styles */
+		.minigame { display: grid; place-items: center; gap: 12px; }
+		#gameCanvas { width: 100%; max-width: 720px; aspect-ratio: 16/9; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.15); border-radius: 12px; }
+		.game-ui { display: flex; gap: 12px; align-items: center; justify-content: center; }
+		.badge { padding: 6px 10px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); }
+		.btn { appearance: none; border: 1px solid rgba(255,255,255,0.18); color: #f2f2f7; background: rgba(255,255,255,0.06); padding: 10px 14px; border-radius: 10px; cursor: pointer; }
+		.btn:hover { background: rgba(255,255,255,0.12); }
+
+		.skills { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+		.skills li { display: grid; gap: 6px; }
+		.skills .bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 30px; overflow: hidden; }
+		.skills .bar > div { height: 100%; background: linear-gradient(90deg, #2a9d8f, #00d4ff); }
+
+		.cards { display: grid; gap: 10px; }
+		.card { display: block; padding: 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.04); color: #fff; text-decoration: none; }
+		.card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.25); }
+
+		@media (max-width: 720px) {
+			.hud { padding: 10px 12px; }
+			.nav { gap: 6px; }
+			.nav-btn { padding: 6px 10px; }
+			.panel { right: 12px; left: 12px; width: auto; }
+			.section .grid { grid-template-columns: 1fr; }
+			.section .cardish { grid-column: auto; }
+		}
+	</style>
+</head>
+<body>
+	<div class="cursor" id="cursor"></div>
+	<div class="cursor-dot" id="cursorDot"></div>
+	<div id="webgl"></div>
+
+	<header class="hud">
+		<div class="brand">
+			<span class="glyph">⟡</span>
+			<span>Abbas Ali</span>
+		</div>
+		<nav class="nav" aria-label="Primary">
+			<button data-panel="about" class="nav-btn"><i class="fa-solid fa-user"></i> About</button>
+			<button data-panel="skills" class="nav-btn"><i class="fa-solid fa-screwdriver-wrench"></i> Skills</button>
+			<button data-panel="projects" class="nav-btn"><i class="fa-solid fa-vial"></i> Projects</button>
+			<button data-panel="contact" class="nav-btn"><i class="fa-solid fa-paper-plane"></i> Contact</button>
+			<a href="#scene-experience" class="nav-btn">Experience</a>
+			<a href="#scene-achievements" class="nav-btn">Achievements</a>
+			<a href="#scene-minigame" class="nav-btn">Mini‑Game</a>
+		</nav>
+	</header>
+
+	<div class="hero">
+		<h1 class="title">Tomb of Interfaces</h1>
+		<p class="subtitle">Front‑end Developer | AI Enthusiast | Gamer</p>
+		<div class="cta">
+			<button class="btn-primary" data-panel="projects">Enter the Ruins</button>
+			<a class="btn-ghost" href="#scene-experience">Back</a>
+		</div>
+	</div>
+
+	<main>
+		<section id="scene-experience" class="section">
+			<div class="container">
+				<h2>Expedition Log</h2>
+				<p>Selected work across UI engineering, motion design, and interactive 3D.</p>
+				<div class="grid">
+					<div class="cardish"><h3>UI Systems</h3><p>Design‑system implementation, components, a11y, theming and tooling.</p></div>
+					<div class="cardish"><h3>Motion & 3D</h3><p>GSAP timelines, WebGL scenes, cinematic transitions with budgets.</p></div>
+					<div class="cardish"><h3>Data & State</h3><p>React/Vanilla patterns, API integration, caching, app shell UX.</p></div>
+				</div>
+			</div>
+		</section>
+
+		<section id="scene-achievements" class="section">
+			<div class="container">
+				<h2>Relics Uncovered</h2>
+				<p>Badges and artifacts collected on past missions.</p>
+				<div class="grid">
+					<div class="cardish"><h3>Performance</h3><p>Core Web Vitals green across complex, animated surfaces.</p></div>
+					<div class="cardish"><h3>Accessibility</h3><p>Keyboard, screen readers, reduced motion friendly patterns.</p></div>
+					<div class="cardish"><h3>Tooling</h3><p>CI, preview workflows, visual regression checks.</p></div>
+				</div>
+			</div>
+		</section>
+
+		<section id="scene-minigame" class="section">
+			<div class="container minigame">
+				<h2>Artifact Run</h2>
+				<canvas id="gameCanvas" width="1280" height="720"></canvas>
+				<div class="game-ui">
+					<span class="badge">Score: <span id="score">0</span></span>
+					<span class="badge">Best: <span id="best">0</span></span>
+					<span class="badge">Health: <span id="health">100</span></span>
+					<button id="startGame" class="btn" data-hover data-magnetic="true">Start</button>
+					<button id="pauseGame" class="btn" data-hover data-magnetic="true">Pause</button>
+				</div>
+				<p style="opacity:.8">Aim with mouse, click to shoot. Survive waves, collect orbs for points.</p>
+			</div>
+		</section>
+	</main>
+
+	<section id="panel-about" class="panel">
+		<h2>About</h2>
+		<p>I build immersive, performant web experiences. Skilled in HTML, CSS, JavaScript, and modern 3D on the web. I love crafting game-like interfaces with crisp motion and cinematic vibes.</p>
+	</section>
+
+	<section id="panel-skills" class="panel">
+		<h2>Skills Tree</h2>
+		<ul class="skills">
+			<li><span>HTML/CSS</span><div class="bar"><div style="width: 90%"></div></div></li>
+			<li><span>JavaScript</span><div class="bar"><div style="width: 85%"></div></div></li>
+			<li><span>Three.js</span><div class="bar"><div style="width: 70%"></div></div></li>
+			<li><span>Git & GitHub</span><div class="bar"><div style="width: 75%"></div></div></li>
+			<li><span>AI Tools</span><div class="bar"><div style="width: 80%"></div></div></li>
+		</ul>
+	</section>
+
+	<section id="panel-projects" class="panel">
+		<h2>Relics (Projects)</h2>
+		<div class="cards">
+			<a class="card" href="https://abbas-ali7.github.io/my-fisrt-website/" target="_blank" rel="noopener">
+				<h3>First Website</h3>
+				<p>Foundational layout, responsiveness, and style experiments.</p>
+			</a>
+			<a class="card" href="https://abbas-ali7.github.io/elden-ui/" target="_blank" rel="noopener">
+				<h3>Elden UI</h3>
+				<p>Fantasy UI prototype inspired by AAA game HUDs.</p>
+			</a>
+		</div>
+	</section>
+
+	<section id="panel-contact" class="panel">
+		<h2>Contact</h2>
+		<p><i class="fa-solid fa-phone"></i> 9011503107</p>
+		<p><i class="fa-solid fa-envelope"></i> abasalisshaikh@gmail.com</p>
+		<p><i class="fa-solid fa-location-dot"></i> Pune, India</p>
+	</section>
+
+	<!-- Three.js via ES Modules is loaded in scripts/app.js -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
+	<!-- UMD builds so the page can run from file:// without ESM imports -->
+	<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+	<script src="https://unpkg.com/three@0.160.0/examples/js/loaders/GLTFLoader.js"></script>
+
+	<script src="scripts/cursor.js"></script>
+	<script src="scripts/minigame.js"></script>
+	<script src="scripts/app.js"></script>
+</body>
+</html>
